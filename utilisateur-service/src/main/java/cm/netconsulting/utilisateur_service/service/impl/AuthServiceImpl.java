@@ -1,0 +1,131 @@
+package cm.netconsulting.utilisateur_service.service.impl;
+
+import cm.netconsulting.utilisateur_service.Enumeration.ROLE;
+import cm.netconsulting.utilisateur_service.dto.requestDTO.LoginRequest;
+import cm.netconsulting.utilisateur_service.dto.requestDTO.RegisterRequest;
+import cm.netconsulting.utilisateur_service.dto.responseDTO.LoginResponseDTO;
+import cm.netconsulting.utilisateur_service.entity.Role;
+import cm.netconsulting.utilisateur_service.entity.Utilisateur;
+import cm.netconsulting.utilisateur_service.exception.BadRequestException;
+import cm.netconsulting.utilisateur_service.exception.NotFoundException;
+import cm.netconsulting.utilisateur_service.repository.RoleRepository;
+import cm.netconsulting.utilisateur_service.repository.UserRepository;
+import cm.netconsulting.utilisateur_service.response.Response;
+import cm.netconsulting.utilisateur_service.security.JwtUtils;
+import cm.netconsulting.utilisateur_service.service.AuthService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class AuthServiceImpl implements AuthService {
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final JwtUtils jwtUtils;
+    private final RoleRepository roleRepository;
+
+
+    @Override
+    public Response<?> register(RegisterRequest registerRequest) {
+
+        // Validate the registration request
+        if (userRepository.existsByEmail(registerRequest.getEmail())) {
+            throw new BadRequestException("email deja utilise");
+        }
+
+        List<Role> userRoles;
+
+        if (registerRequest.getRoles() != null && !registerRequest.getRoles().isEmpty()) {
+
+            userRoles = registerRequest.getRoles().stream()
+                    .map(roleName -> {
+                        ROLE roleEnum = ROLE.valueOf(
+                                roleName.toUpperCase().replace("ROLE_", "")
+                        );
+
+                        return roleRepository.findByNom(roleEnum)
+                                .orElseThrow(() ->
+                                        new NotFoundException("Role not found: " + roleEnum)
+                                );
+                    })
+                    .toList();
+
+        } else {
+            // Default role
+            Role defaultRole = roleRepository.findByNom(ROLE.UTILISATEUR)
+                    .orElseThrow(() ->
+                            new NotFoundException("Default role UTILISATEUR not found")
+                    );
+
+            userRoles = List.of(defaultRole);
+        }
+
+
+        Utilisateur user = Utilisateur.builder()
+                .nom(registerRequest.getNom())
+                .prenom(registerRequest.getPrenom())
+                .adresse(registerRequest.getAdresse())
+                .telephone(registerRequest.getTelephone())
+                .email(registerRequest.getEmail())
+                .isActive(true)
+                .password(passwordEncoder.encode(registerRequest.getPassword()))
+                .roles(userRoles)
+                .build();
+
+        // Save the user
+        userRepository.save(user);
+
+        return Response.builder()
+                .statusCode(HttpStatus.OK.value())
+                .message("utilistaeur enregistrer")
+                .build();
+
+    }
+
+
+
+    @Override
+    public Response<LoginResponseDTO> login(LoginRequest loginRequest) {
+
+        log.info("INSIDE login()");
+
+
+        Utilisateur user = userRepository.findByEmail(loginRequest.getEmail())
+                .orElseThrow(() -> new BadRequestException("mot de passe ou email incorrect"));
+
+
+        if (!user.isActive()) {
+            throw new BadRequestException("compte not active");
+        }
+
+
+        if (!passwordEncoder.matches(loginRequest.getPassword(), user.getPassword())) {
+            throw new BadRequestException("Invalid credentials");
+        }
+
+
+        String token = jwtUtils.generateToken(user.getEmail());
+
+
+        List<ROLE> roleNames = user.getRoles().stream()
+                .map(Role::getNom)
+                .toList();
+
+
+        LoginResponseDTO loginResponse = new LoginResponseDTO();
+        loginResponse.setToken(token);
+        loginResponse.setRoles(roleNames);
+
+        return Response.<LoginResponseDTO>builder()
+                .statusCode(HttpStatus.OK.value())
+                .message("Connexion réussie")
+                .data(loginResponse)
+                .build();
+    }
+}

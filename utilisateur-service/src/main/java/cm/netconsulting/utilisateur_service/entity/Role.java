@@ -1,6 +1,7 @@
 package cm.netconsulting.utilisateur_service.entity;
 
 
+import cm.netconsulting.utilisateur_service.Enumeration.ROLE;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -19,7 +20,8 @@ public class Role {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String nom;
+    @Enumerated(EnumType.STRING)
+    private ROLE nom;
 
     @ManyToMany(mappedBy = "roles")
     private Set<Utilisateur> utilisateurs = new HashSet<>();
