@@ -1,0 +1,32 @@
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        format_sql: true
+
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    table: flyway_history_emprunts
+    locations: classpath:db/migration
+
+
+  threads:
+    virtual:
+      enabled: true
+
+
+
+
+server:
+  port: 8083
+
+
+
+
+
+
+

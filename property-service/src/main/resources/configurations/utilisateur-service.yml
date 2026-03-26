@@ -1,0 +1,25 @@
+server:
+  port: 8081
+
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        format_sql: true
+
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    table: flyway_history_utilisateur
+    locations: classpath:db/migration
+
+  threads:
+    virtual:
+      enabled: true
+
+jwt:
+  secret: TON_SECRET_JWT_256_BITS_MINIMUM
+  expiration: 86400000

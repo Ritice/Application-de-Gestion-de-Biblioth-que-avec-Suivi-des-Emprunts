@@ -1,3 +1,14 @@
+
 spring:
   application:
     name: property-service
+  profiles:
+    active: native
+  cloud:
+    config:
+      server:
+        native:
+          search-locations: classpath:/configurations
+
+server:
+  port: 8888

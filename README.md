@@ -47,8 +47,8 @@ L’application est composée des microservices suivants :
 
 ## Diagrammes
 
-* Diagramme de classes ✔️
-* Architecture microservices ✔️
+* Diagramme de classes 
+* Architecture microservices 
 
 ---
 
@@ -83,11 +83,4 @@ L’application est composée des microservices suivants :
 
 ---
 
-## Améliorations futures
 
-* Dockerisation complète
-* Déploiement Kubernetes
-* Monitoring (Prometheus + Grafana)
-* Intégration Keycloak
-
----

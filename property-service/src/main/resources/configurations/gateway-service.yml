@@ -1,0 +1,40 @@
+spring:
+  application:
+    name: gateway-service
+  cloud:
+    gateway:
+      routes:
+        - id: bibliotheque-service
+          uri: lb://bibliotheque-service
+          predicates:
+            - Path=/api/livres/**, /api/auteurs/**
+          filters:
+            - AuthenticationFilter
+
+        - id: utilisateur-service
+          uri: lb://utilisateur-service
+          predicates:
+            - Path=/api/utilisateurs/**, /api/auth/**
+          filters:
+            - AuthenticationFilter
+
+        - id: emprunt-service
+          uri: lb://emprunt-service
+          predicates:
+            - Path=/api/emprunts/**
+          filters:
+            - AuthenticationFilter
+
+        - id: suivi-service
+          uri: lb://suivi-service
+          predicates:
+            - Path=/api/suivi/**
+          filters:
+            - AuthenticationFilter
+
+server:
+  port: 8070
+
+
+jwt:
+  secret: TON_SECRET_JWT_256_BITS_MINIMUM

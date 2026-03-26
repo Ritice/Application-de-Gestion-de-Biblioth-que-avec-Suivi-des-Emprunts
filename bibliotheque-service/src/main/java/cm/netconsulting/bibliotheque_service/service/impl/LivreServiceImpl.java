@@ -1,0 +1,174 @@
+package cm.netconsulting.bibliotheque_service.service.impl;
+
+import cm.netconsulting.bibliotheque_service.dto.resquestDTO.LivreRequestDTO;
+import cm.netconsulting.bibliotheque_service.dto.responseDTO.LivreResponseDTO;
+import cm.netconsulting.bibliotheque_service.entity.Auteur;
+import cm.netconsulting.bibliotheque_service.entity.Livre;
+import cm.netconsulting.bibliotheque_service.exception.BadRequestException;
+import cm.netconsulting.bibliotheque_service.exception.NotFoundException;
+import cm.netconsulting.bibliotheque_service.mapper.LivreMapper;
+import cm.netconsulting.bibliotheque_service.repository.AuteurRepository;
+import cm.netconsulting.bibliotheque_service.repository.LivreRepository;
+import cm.netconsulting.bibliotheque_service.service.LivreService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+@Slf4j
+@Transactional
+public class LivreServiceImpl implements LivreService {
+
+    private final LivreRepository livreRepository;
+    private final AuteurRepository auteurRepository;
+    private final LivreMapper livreMapper;
+
+    @Override
+    public LivreResponseDTO creer(LivreRequestDTO dto) {
+        Livre livre = livreMapper.toEntity(dto);
+        Livre saved = livreRepository.save(livre);
+
+        // Synchroniser les deux côtés de la relation ManyToMany
+        //     Auteur est le propriétaire (@JoinTable), donc c'est lui
+        //      qui insère dans auteur_livre. Il faut ajouter le livre
+        //      dans auteur.getLivres() pour qu'Hibernate écrive la jointure.
+        if (dto.getAuteurIds() != null && !dto.getAuteurIds().isEmpty()) {
+            List<Auteur> auteurs = resolveAuteurs(dto.getAuteurIds());
+            for (Auteur auteur : auteurs) {
+                if (auteur.getLivres() == null) {
+                    auteur.setLivres(new ArrayList<>());
+                }
+
+                if (!auteur.getLivres().contains(saved)) {
+                    auteur.getLivres().add(saved);
+                }
+                auteurRepository.save(auteur);
+            }
+            saved.setAuteurs(auteurs);
+        }
+
+        return livreMapper.toResponseDTO(saved);
+    }
+
+    @Override
+    public LivreResponseDTO modifier(Long id, LivreRequestDTO dto) {
+        log.info("Modification du livre id : {}", id);
+
+        Livre livre = livreRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Livre introuvable avec l'id : " + id));
+
+        // Mise à jour des champs simples via mapper
+        livreMapper.updateEntityFromDTO(dto, livre);
+
+        // Mise à jour des associations si une nouvelle liste est fournie
+        if (dto.getAuteurIds() != null) {
+            // Retirer ce livre de tous les anciens auteurs
+            if (livre.getAuteurs() != null) {
+                for (Auteur ancienAuteur : livre.getAuteurs()) {
+                    if (ancienAuteur.getLivres() != null) {
+                        ancienAuteur.getLivres().remove(livre);
+                        auteurRepository.save(ancienAuteur);
+                    }
+                }
+            }
+
+            // Associer les nouveaux auteurs
+            List<Auteur> nouveauxAuteurs = resolveAuteurs(dto.getAuteurIds());
+            for (Auteur auteur : nouveauxAuteurs) {
+                if (auteur.getLivres() == null) {
+                    auteur.setLivres(new ArrayList<>());
+                }
+                if (!auteur.getLivres().contains(livre)) {
+                    auteur.getLivres().add(livre);
+                    auteurRepository.save(auteur);
+                }
+            }
+            livre.setAuteurs(nouveauxAuteurs);
+        }
+
+        Livre updated = livreRepository.save(livre);
+        log.info("Livre id {} modifié avec succès", updated.getId());
+
+        return livreMapper.toResponseDTO(updated);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public LivreResponseDTO trouverParId(Long id) {
+        log.info("Recherche du livre id : {}", id);
+        Livre livre = livreRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Livre introuvable avec l'id : " + id));
+        return livreMapper.toResponseDTO(livre);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<LivreResponseDTO> listerTous(Pageable pageable) {
+        log.info("Listing de tous les livres - page {}", pageable.getPageNumber());
+        return livreRepository.findAll(pageable).map(livreMapper::toResponseDTO);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<LivreResponseDTO> rechercherParTitre(String titre, Pageable pageable) {
+        if (titre == null || titre.isBlank()) {
+            throw new BadRequestException("Le paramètre 'titre' est obligatoire pour la recherche");
+        }
+        return livreRepository.findByTitreContainingIgnoreCase(titre, pageable)
+                .map(livreMapper::toResponseDTO);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<LivreResponseDTO> rechercherParCategorie(String category, Pageable pageable) {
+        if (category == null || category.isBlank()) {
+            throw new BadRequestException("Le paramètre 'category' est obligatoire pour la recherche");
+        }
+        return livreRepository.findByCategoryIgnoreCase(category, pageable)
+                .map(livreMapper::toResponseDTO);
+    }
+
+    @Override
+    public void supprimer(Long id) {
+        log.info("Suppression du livre id : {}", id);
+
+        Livre livre = livreRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Livre introuvable avec l'id : " + id));
+
+        // Retirer le livre de la liste des auteurs avant suppression
+        // pour nettoyer auteur_livre (côté propriétaire)
+        if (livre.getAuteurs() != null) {
+            for (Auteur auteur : livre.getAuteurs()) {
+                if (auteur.getLivres() != null) {
+                    auteur.getLivres().remove(livre);
+                    auteurRepository.save(auteur);
+                }
+            }
+        }
+
+        livreRepository.delete(livre);
+        log.info("Livre id {} supprimé avec succès", id);
+    }
+
+    // -------------------------------------------------------
+    // PRIVÉ
+    // -------------------------------------------------------
+    private List<Auteur> resolveAuteurs(List<Long> auteurIds) {
+        if (auteurIds == null || auteurIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return auteurIds.stream()
+                .map(auteurId -> auteurRepository.findById(auteurId)
+                        .orElseThrow(() -> new NotFoundException(
+                                "Auteur introuvable avec l'id : " + auteurId)))
+                .toList();
+    }
+}
