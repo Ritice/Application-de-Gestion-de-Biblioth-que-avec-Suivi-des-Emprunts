@@ -19,4 +19,7 @@ public interface LivreService {
     Page<LivreResponseDTO> rechercherParCategorie(String category, Pageable pageable);
 
     void supprimer(Long id);
+
+    void decrementerExemplaires(Long livreId);
+    void incrementerExemplaires(Long livreId);
 }

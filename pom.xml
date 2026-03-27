@@ -16,7 +16,6 @@
 
   <modules>
     <module>utilisateur-service</module>
-    <module>suivi-service</module>
     <module>bibliotheque-service</module>
     <module>emprunt-service</module>
     <module>registry-service</module>

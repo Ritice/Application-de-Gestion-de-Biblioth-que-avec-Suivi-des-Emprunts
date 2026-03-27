@@ -42,62 +42,54 @@ public class AuthFilter extends OncePerRequestFilter { // Filtre exécuté une s
                                     HttpServletResponse response,
                                     FilterChain filterChain)
             throws ServletException, IOException {
+        String path = request.getServletPath();
 
-        // Récupère le token JWT depuis le header Authorization
+        if (path.startsWith("/api/v1/auth")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
+        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         String token = getTokenFromRequest(request);
 
-        // Vérifie si un token est présent dans la requête
-        if (token != null){
+        if (token != null) {
             String email;
 
             try {
-                // Extrait l'email (username) contenu dans le token JWT
                 email = jwtUtils.getUsernameFromToken(token);
-
-            } catch(Exception ex){
-                // Si le token est invalide ou mal formé, on déclenche une erreur d'authentification
+            } catch (Exception ex) {
                 AuthenticationException authenticationException =
                         new BadCredentialsException(ex.getMessage());
 
-                // Appelle le gestionnaire d'erreurs personnalisé
                 customAuthenticationEntryPoint.commence(request, response, authenticationException);
-                return; // Arrête le traitement de la requête
+                return;
             }
 
-            // Charge l'utilisateur depuis la base de données via son email
             UserDetails userDetails = utilisateurDetailsService.loadUserByUsername(email);
 
-            // Vérifie que l'email existe et que le token est valide
-            if (StringUtils.hasText(email) && jwtUtils.isTokenValid(token, userDetails)){
+            if (StringUtils.hasText(email) && jwtUtils.isTokenValid(token, userDetails)) {
 
-                // Crée un objet d'authentification Spring Security
                 UsernamePasswordAuthenticationToken authenticationToken =
                         new UsernamePasswordAuthenticationToken(
-                                userDetails, // utilisateur authentifié
-                                null, // mot de passe (non nécessaire ici)
-                                userDetails.getAuthorities() // rôles et permissions
+                                userDetails,
+                                null,
+                                userDetails.getAuthorities()
                         );
 
-                // Ajoute des détails sur la requête (IP, session...)
                 authenticationToken.setDetails(
                         new WebAuthenticationDetailsSource().buildDetails(request)
                 );
 
-                // Enregistre l'utilisateur authentifié dans le contexte de sécurité de Spring
                 SecurityContextHolder.getContext().setAuthentication(authenticationToken);
             }
         }
 
-        try {
-            // Continue la chaîne des filtres et permet à la requête d'aller vers le controller
-            filterChain.doFilter(request, response);
-
-        } catch (Exception e){
-            // En cas d'erreur, log l'erreur
-            log.error(e.getMessage());
-        }
+        filterChain.doFilter(request, response);
     }
-
 
     // Méthode utilitaire pour récupérer le token JWT depuis le header HTTP
     private String getTokenFromRequest(HttpServletRequest request) {

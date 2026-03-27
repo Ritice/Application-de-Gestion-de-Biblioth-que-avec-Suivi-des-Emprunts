@@ -1,0 +1,4 @@
+package cm.netconsulting.emprunt_service.dto.responseDTO;
+
+public class SuiviResponse {
+}

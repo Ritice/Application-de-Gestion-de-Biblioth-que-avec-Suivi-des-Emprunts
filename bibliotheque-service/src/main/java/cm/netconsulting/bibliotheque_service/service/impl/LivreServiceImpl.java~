@@ -159,42 +159,13 @@ public class LivreServiceImpl implements LivreService {
     }
 
     @Override
-    @Transactional
     public void decrementerExemplaires(Long livreId) {
 
-        Livre livre = livreRepository.findById(livreId)
-                .orElseThrow(() -> new RuntimeException(
-                        "Livre introuvable avec l'id : " + livreId
-                ));
-
-        if (livre.getExemplairesDisponibles() <= livre.getSeuilMinimal()) {
-            throw new RuntimeException(
-                    "Impossible de emprunter ce livre : seuil minimal atteint (" +
-                            livre.getSeuilMinimal() + ")"
-            );
-        }
-
-        livre.setTotalExemplaires(livre.getTotalExemplaires() - 1);
-        livreRepository.save(livre);
-
-        log.info("livre emprunté '{}' → {} nombre de livre restan restants",
-                livre.getTitre(), livre.getExemplairesDisponibles());
     }
 
     @Override
-    @Transactional
     public void incrementerExemplaires(Long livreId) {
 
-        Livre livre = livreRepository.findById(livreId)
-                .orElseThrow(() -> new RuntimeException(
-                        "Livre introuvable avec l'id : " + livreId
-                ));
-
-        livre.setTotalExemplaires(livre.getTotalExemplaires() + 1);
-        livreRepository.save(livre);
-
-        log.info("Exemplaires incrémentés pour '{}' → {} disponibles",
-                livre.getTitre(), livre.getTotalExemplaires());
     }
 
 

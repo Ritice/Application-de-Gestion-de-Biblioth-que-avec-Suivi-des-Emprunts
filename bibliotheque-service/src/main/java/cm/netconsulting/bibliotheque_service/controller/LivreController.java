@@ -2,6 +2,7 @@ package cm.netconsulting.bibliotheque_service.controller;
 
 import cm.netconsulting.bibliotheque_service.dto.resquestDTO.LivreRequestDTO;
 import cm.netconsulting.bibliotheque_service.dto.responseDTO.LivreResponseDTO;
+import cm.netconsulting.bibliotheque_service.response.Response;
 import cm.netconsulting.bibliotheque_service.service.LivreService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -80,5 +81,29 @@ public class LivreController {
     public ResponseEntity<Void> supprimer(@PathVariable Long id) {
         livreService.supprimer(id);
         return ResponseEntity.noContent().build();
+    }
+
+
+    @PutMapping("/{id}/decrementer")
+    public ResponseEntity<Response<Void>> decrementer(@PathVariable Long id) {
+        livreService.decrementerExemplaires(id);
+        return ResponseEntity.ok(
+                Response.<Void>builder()
+                        .statusCode(200)
+                        .message("Exemplaires décrémentés avec succès")
+                        .build()
+        );
+    }
+
+
+    @PutMapping("/{id}/incrementer")
+    public ResponseEntity<Response<Void>> incrementer(@PathVariable Long id) {
+        livreService.incrementerExemplaires(id);
+        return ResponseEntity.ok(
+                Response.<Void>builder()
+                        .statusCode(200)
+                        .message("Exemplaires incrémentés avec succès")
+                        .build()
+        );
     }
 }

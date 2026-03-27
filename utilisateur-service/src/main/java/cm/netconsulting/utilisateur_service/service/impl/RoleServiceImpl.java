@@ -51,14 +51,13 @@ public class RoleServiceImpl implements RoleService {
     public Response<RoleResponseDTO> updateRole(RoleRequestDTO roleRequest) {
 
         Role existingRole = roleRepository.findById(roleRequest.getId())
-                .orElseThrow(() -> new NotFoundException("Role not found"));
+                .orElseThrow(() -> new NotFoundException("role introuvable"));
 
         ROLE roleEnum = roleMapper.toEnum(roleRequest.getNom().name());
 
-        // Vérifie si un autre rôle existe déjà avec ce nom
         roleRepository.findByNom(roleEnum).ifPresent(role -> {
             if (!role.getId().equals(existingRole.getId())) {
-                throw new BadRequestException("Role already exists");
+                throw new BadRequestException("role deja existant");
             }
         });
 
@@ -68,7 +67,7 @@ public class RoleServiceImpl implements RoleService {
 
         return Response.<RoleResponseDTO>builder()
                 .statusCode(HttpStatus.OK.value())
-                .message("Role updated successfully")
+                .message("Role mise a jour avec success")
                 .data(roleMapper.toDto(updatedRole))
                 .build();
     }
@@ -84,7 +83,7 @@ public class RoleServiceImpl implements RoleService {
 
         return Response.<List<RoleResponseDTO>>builder()
                 .statusCode(HttpStatus.OK.value())
-                .message("Roles retrieved successfully")
+                .message("roles charger avec success")
                 .data(roleDTOS)
                 .build();
     }
@@ -99,7 +98,7 @@ public class RoleServiceImpl implements RoleService {
 
         return Response.builder()
                 .statusCode(HttpStatus.OK.value())
-                .message("Role deleted successfully")
+                .message("Role supprimer avec success")
                 .build();
     }
 }
